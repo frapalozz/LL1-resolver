@@ -14,6 +14,7 @@
 <header class="band"><div class="wrap">
   <h1>Risolutore LL(1)</h1>
   <p class="sub">Dal linguaggio alla grammatica LL(1), passo per passo: normalizzazione, ricorsione sinistra, left factoring, sostituzioni, FIRST, FOLLOW e tabella di parsing.</p>
+  <p class="limit"><strong>Risolve solo una parte dei casi.</strong> Stabilire se un linguaggio ammette una grammatica LL(1) è indecidibile (Rosenkrantz e Stearns, 1970): nessun algoritmo può riuscirci sempre. Quando il risolutore dice <em>È LL(1)</em> il risultato è certo. Quando dice <em>Grammatica non LL(1)</em> o <em>Va in loop</em> non ha trovato una grammatica LL(1): è un indizio forte, ma il linguaggio potrebbe comunque averne una.</p>
 </div></header>
 
 <section class="band work wrap" style="max-width:calc(1240px + 10vw)">
@@ -51,7 +52,7 @@ F -> ( E ) | id</textarea>
 
 <main class="band" style="padding-top:0"><div class="wrap" id="phases"></div></main>
 
-<footer class="band"><div class="wrap">Il metodo copre linguaggi con esponenti indipendenti o uguali e annidati. Un loop indica che il linguaggio molto probabilmente non è LL(1): la decisione in generale è indecidibile, quindi resta un'euristica.</div></footer>
+<footer class="band"><div class="wrap">La modalità linguaggio accetta esponenti indipendenti o uguali e annidati; non accetta vincoli tra variabili (come n ≥ m) né esponenti con il segno meno. Poiché il problema è indecidibile, il risolutore copre solo un sottoinsieme dei casi: ogni insieme finito di regole lascia fuori qualche linguaggio LL(1).</div></footer>
 
 <script src="src/ll1.js"></script>
 <script src="src/app.js"></script>

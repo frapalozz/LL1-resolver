@@ -262,16 +262,24 @@ const LL1 = (() => {
       const grp = [...groups.values()].find(x => x.length > 1);
       if (!grp) continue;
       let p = 0; while (grp.every(a => p < a.length && a[p] === grp[0][p])) p++;
-      const prefix = grp[0].slice(0, p), A2 = fresh(g, A);
+      const prefix = grp[0].slice(0, p);
       const before = `${A} → ${alts.map(altText).join(' | ')}`;
+      const suff = dedupe(grp.map(a => a.slice(p)));
+      const ck = suff.map(key).sort().join('\u0002');
+      // stesse alternative di un non terminale già creato: lo riuso (stesso linguaggio)
+      const old = [...sigs.entries()].find(([X, o]) => o.ck === ck && g.P.has(X));
+      const A2 = old ? old[0] : fresh(g, A);
       const nw = []; let placed = false;
       for (const a of alts) { if (grp.includes(a)) { if (!placed) { nw.push([...prefix, A2]); placed = true; } } else nw.push(a); }
       g.P.set(A, nw);
-      const suff = dedupe(grp.map(a => a.slice(p)));
+      if (old) {
+        log('Left factoring', `${before}: le alternative ${grp.map(altText).join(', ')} iniziano con ${altText(prefix)}. Quello che resta (${suff.map(altText).join(' | ')}) è uguale alle produzioni con cui avevo creato ${A2}: riuso ${A2}.`);
+        return { done: true };
+      }
       addNT(g, A2, suff);
       g.meta.set(A2, { parent: A });
       const s = sig(suff, g), len = suff.reduce((n, a) => n + a.length, 0);
-      sigs.set(A2, { s, len });
+      sigs.set(A2, { s, len, ck });
       log('Left factoring', `${before}: le alternative ${grp.map(altText).join(', ')} iniziano con ${altText(prefix)}. Raccolgo il prefisso e creo ${A2}.`);
       for (let q = A; q; q = g.meta.get(q)?.parent) {
         const o = sigs.get(q);
@@ -300,20 +308,66 @@ const LL1 = (() => {
     }
     return false;
   }
+  // Regola d: assorbire il FOLLOW. Se A è annullabile e t sta sia in FIRST di
+  // un'alternativa di A sia in FOLLOW(A), il blocco "A β" che porta t diventa
+  // un nuovo non terminale T, con le produzioni di A seguite da β.
+  const POOL = 'TUVWZYXRQPONMLKJIHGFEDCBA'.split('');
+  function fold(seq, A, beta, T) {
+    const out = [];
+    for (let i = 0; i < seq.length;) {
+      if (seq[i] === A && beta.every((s, k) => seq[i + 1 + k] === s)) { out.push(T); i += 1 + beta.length; }
+      else out.push(seq[i++]);
+    }
+    return out;
+  }
+  function absorbFor(g, S, A, t, log, depth) {
+    if (depth > 3) return false;
+    const occ = [];
+    for (const X of g.order) for (const a of g.P.get(X)) a.forEach((s, p) => { if (s === A) occ.push({ X, beta: a.slice(p + 1) }); });
+    const direct = occ.filter(o => o.beta.length && firstSeq(g, o.beta, S.F, S.N).has(t));
+    if (!direct.length) {
+      // t arriva dal FOLLOW di chi contiene A in fondo: risalgo
+      const up = occ.find(o => o.X !== A && firstSeq(g, o.beta, S.F, S.N).has(EPS) && S.FO.get(o.X).has(t));
+      return up ? absorbFor(g, S, up.X, t, log, depth + 1) : false;
+    }
+    const beta = direct[0].beta, T = POOL.find(x => !g.P.has(x));
+    if (!T) return false;
+    const prods = dedupe(g.P.get(A).map(γ => fold([...γ, ...beta], A, beta, T)));
+    for (const X of g.order) g.P.set(X, dedupe(g.P.get(X).map(a => fold(a, A, beta, T))));
+    addNT(g, T, prods);
+    log('Assorbimento del FOLLOW', `${depth ? `Il conflitto su ${t} arriva da FOLLOW(${A}). ` : `${A} è annullabile e ${t} sta sia nel FIRST di una sua alternativa sia in FOLLOW(${A}). `}${A} compare seguito da ${altText(beta)}: creo ${T} = ${A} ${altText(beta)}, con le produzioni di ${A} seguite da ${altText(beta)}, e sostituisco ${A} ${altText(beta)} con ${T} ovunque.`);
+    return true;
+  }
+  function absorbOnce(g, log) {
+    const S = sets(g);
+    for (const c of table(g, S).conflicts) if (c.kind === 'FIRST/FOLLOW' && absorbFor(g, S, c.A, c.t, log, 0)) return true;
+    return false;
+  }
   function transform(g, log) {
-    const sigs = new Map(); let warnedHidden = false;
+    const sigs = new Map(); let warnedHidden = false, snap = null, absorbs = 0;
+    const back = (why) => {
+      g.order = snap.order; g.P = snap.P; g.meta = snap.meta;
+      log('Torno indietro', `${why} Riprendo la grammatica com'era prima dell'assorbimento del FOLLOW.`);
+      return { status: 'ok' };
+    };
     for (let it = 0; it < 80; it++) {
-      if (size(g) > 500) return { status: 'big' };
+      if (size(g) > 500) return snap ? back('La grammatica cresce senza fermarsi.') : { status: 'big' };
       const lr = leftRec(g);
       if (lr.direct.length) { removeLR(g, log); continue; }
       if (lr.hidden.length && !warnedHidden) { warnedHidden = true; log('Attenzione', `${lr.hidden.join(', ')}: ricorsione sinistra nascosta dietro un non terminale annullabile. Il metodo non la elimina; la verifica mostrerà il conflitto.`); }
       const f = factorOnce(g, log, sigs);
-      if (f?.loop) return { status: 'loop', loop: f.loop };
+      if (f?.loop) return snap ? back(`L'assorbimento del FOLLOW va in loop (${f.loop.A} ripete la forma di ${f.loop.B}).`) : { status: 'loop', loop: f.loop };
       if (f) continue;
       if (substOnce(g, log)) continue;
+      const before = clone(g);
+      if (absorbOnce(g, log)) {
+        if (!snap) snap = before;
+        if (++absorbs > 6) return back("L'assorbimento del FOLLOW continua senza risolvere il conflitto.");
+        continue;
+      }
       return { status: 'ok' };
     }
-    return { status: 'limit' };
+    return snap ? back('Le trasformazioni non si chiudono.') : { status: 'limit' };
   }
 
   // ---------- Fase 3: semplificazione ----------

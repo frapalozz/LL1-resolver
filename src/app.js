@@ -29,8 +29,8 @@ function verdict() {
   if (R.status !== 'ok') { v.textContent = 'Non converge'; w.textContent = 'Le trasformazioni continuano senza chiudersi. Il linguaggio molto probabilmente non è LL(1), oppure serve una grammatica di partenza diversa.'; return; }
   if (R.ll1) { v.className = 'verdict'; v.textContent = 'È LL(1)'; w.textContent = 'Nessuna cella della tabella ha due produzioni: questa grammatica è LL(1), quindi lo è anche il linguaggio.'; return; }
   const c = R.conflicts.map(c => `M[${c.A}, ${c.t}] (${c.kind})`).join(', ');
-  v.textContent = 'Non è LL(1)';
-  w.textContent = `La grammatica ottenuta ha ${R.conflicts.length === 1 ? 'un conflitto' : R.conflicts.length + ' conflitti'}: ${c}. Se dipende da come hai scritto le produzioni prova un'altra grammatica; se la scelta la impone il linguaggio, come nel dangling else, il linguaggio non è LL(1).`;
+  v.textContent = 'Grammatica non LL(1)';
+  w.textContent = `La grammatica ottenuta ha ${R.conflicts.length === 1 ? 'un conflitto' : R.conflicts.length + ' conflitti'}: ${c}. Il risolutore non ha trovato una grammatica LL(1). Se la scelta la impone il linguaggio, come nel dangling else, il linguaggio non è LL(1); altrimenti potrebbe averne una che queste regole non raggiungono.`;
 }
 
 function phases() {
@@ -43,7 +43,7 @@ function phases() {
   } else out.push(phase(0, 'Normalizza il linguaggio', '', '<p class="note">Parti da una grammatica: questa fase non serve.</p>'));
   out.push(phase(1, 'Grammatica iniziale', R.mode === 'lang' ? 'Blocco indipendente αⁿ: X → α X | ε. Blocchi legati αⁿ γ βⁿ: X → α X β | γ. Unione: S → S₁ | S₂.' : '',
     gH(R.g1) + R.warn.map(s => `<p class="alert">${esc(s)} non ha produzioni: lo tratto come terminale.</p>`).join('')));
-  out.push(phase(2, 'Trasforma', 'Ricorsione sinistra, poi left factoring, poi sostituzione dei non terminali a inizio produzione quando i FIRST si sovrappongono. Si ripete finché non cambia più nulla.',
+  out.push(phase(2, 'Trasforma', 'Ricorsione sinistra, poi left factoring, poi sostituzione dei non terminali a inizio produzione quando i FIRST si sovrappongono. Solo quando nessuna di queste si applica: assorbimento del FOLLOW per i conflitti FIRST/FOLLOW. Si ripete finché non cambia più nulla.',
     R.steps.length ? `<ol class="steps">${R.steps.map(s => `<li><strong>${esc(s.title)}</strong>${esc(s.txt)}${gH(s.g)}</li>`).join('')}</ol>` +
       (R.status === 'loop' ? `<p class="alert">Loop: ${esc(R.loop.A)} ripete la forma di ${esc(R.loop.B)}. Mi fermo qui.</p>` : '')
       : '<p class="note">Nessuna trasformazione necessaria.</p>'));

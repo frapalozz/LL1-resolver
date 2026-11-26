@@ -4,6 +4,8 @@ Dato un linguaggio, trova una grammatica LL(1) e verifica che lo sia davvero. Mo
 
 Pensato per chi studia **Linguaggi e Compilatori**.
 
+> **Risolve solo un sottoinsieme dei casi.** Stabilire se un linguaggio context-free ammette una grammatica LL(1) è indecidibile (Rosenkrantz e Stearns, 1970): nessun algoritmo può riuscirci sempre. *È LL(1)* è un risultato certo; *Grammatica non LL(1)* e *Va in loop* significano che il risolutore non ha trovato una grammatica LL(1), non che non esista.
+
 **Demo:** https://ll1-resolver.palozz.com
 
 ## Cosa fa
@@ -11,7 +13,7 @@ Pensato per chi studia **Linguaggi e Compilatori**.
 - Parte da un **linguaggio** descritto con esponenti (`a^n b^m c^n`, con `n>=1, m>=0`) oppure da una **grammatica** già scritta.
 - Applica l'algoritmo una fase alla volta e mostra la grammatica dopo ogni trasformazione.
 - Calcola annullabili, FIRST, FOLLOW e la tabella di parsing M, con i conflitti evidenziati.
-- Dà un verdetto: **È LL(1)**, **Non è LL(1)** (con il tipo di conflitto) oppure **Va in loop**.
+- Dà un verdetto: **È LL(1)**, **Grammatica non LL(1)** (con il tipo di conflitto) oppure **Va in loop**.
 - Se la grammatica è LL(1), analizza una stringa e mostra pila, input e azione a ogni passo.
 
 ## In collaboration with
@@ -64,9 +66,10 @@ F -> ( E ) | id
 2. **Trasforma**, ripetendo finché non cambia più nulla:
    - elimina la ricorsione sinistra (diretta e indiretta);
    - fai il left factoring;
-   - sostituisci un non terminale a inizio produzione quando il suo FIRST si sovrappone a un'altra alternativa.
+   - sostituisci un non terminale a inizio produzione quando il suo FIRST si sovrappone a un'altra alternativa;
+   - solo quando nessuna delle tre si applica: **assorbi il FOLLOW**. Se A è annullabile e un terminale t sta sia nel FIRST di un'alternativa di A sia in FOLLOW(A), prendi il punto in cui A è seguito da β con t ∈ FIRST(β), crea `T = A β` con le produzioni di A seguite da β, e sostituisci `A β` con T ovunque (anche dentro le produzioni di T). Se t arriva dal FOLLOW di chi contiene A in fondo, risali a quel non terminale.
 
-   Se un nuovo non terminale ripete la forma di uno precedente con più simboli in coda, il procedimento **va in loop**: il linguaggio molto probabilmente non è LL(1).
+   Se un nuovo non terminale ripete la forma di uno precedente con più simboli in coda, il procedimento **va in loop**: il linguaggio molto probabilmente non è LL(1). Se è l'assorbimento del FOLLOW a non chiudersi, il tool torna alla grammatica di prima e mostra il conflitto.
 3. **Semplifica:** unisci i non terminali con produzioni identiche ed elimina quelli irraggiungibili.
 4. **Verifica:** per ogni `A → α | β`:
    - `FIRST(α) ∩ FIRST(β) = ∅`;
@@ -78,6 +81,7 @@ F -> ( E ) | id
 ## Limiti
 
 - Stabilire se un linguaggio context-free ammette una grammatica LL(1) è in generale **indecidibile**. Il riconoscimento del loop è un'euristica.
+- Il verdetto **È LL(1)** è sempre affidabile. **Grammatica non LL(1)** riguarda la grammatica ottenuta: il linguaggio potrebbe comunque avere un'altra grammatica LL(1).
 - Non sono supportati vincoli tra variabili (come `n ≥ m`) né esponenti con il segno meno (come `aⁿ⁻¹`).
 - La ricorsione sinistra nascosta dietro un non terminale annullabile viene segnalata ma non eliminata.
 - Linguaggi come `aⁿbⁿcⁿ` (stessa variabile tre volte) ed esponenti incrociati come `aⁿbᵐcⁿdᵐ` vengono rifiutati perché non sono context-free.
