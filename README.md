@@ -14,6 +14,12 @@ Pensato per chi studia **Linguaggi e Compilatori**.
 - Dà un verdetto: **È LL(1)**, **Non è LL(1)** (con il tipo di conflitto) oppure **Va in loop**.
 - Se la grammatica è LL(1), analizza una stringa e mostra pila, input e azione a ogni passo.
 
+## In collaboration with
+
+[**ExponentLab**](https://github.com/Berserk-hub150/ExponentLab) — A complementary open-source project for grammar generation, formal language analysis and LL(1) verification.
+
+[![ExponentLab](https://img.shields.io/badge/GitHub-ExponentLab-181717?style=for-the-badge&logo=github)](https://github.com/Berserk-hub150/ExponentLab)
+
 ## Uso
 
 Apri `index.html` nel browser. Non servono installazioni né server.
