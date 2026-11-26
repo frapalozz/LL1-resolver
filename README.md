@@ -4,7 +4,7 @@ Dato un linguaggio, trova una grammatica LL(1) e verifica che lo sia davvero. Mo
 
 Pensato per chi studia **Linguaggi e Compilatori**.
 
-**Demo:** https://frapalozz.github.io/LL1-resolver/
+**Demo:** https://ll1-resolver.palozz.com
 
 ## Cosa fa
 
